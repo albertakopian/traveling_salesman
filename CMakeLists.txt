@@ -3,4 +3,4 @@ project(traveling_salesman)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(traveling_salesman main.cpp EDGE.h POINT.h)
+add_executable(traveling_salesman main.cpp EDGE.h POINT.h variant_A.cpp variant_B.cpp)
