@@ -1,4 +1,3 @@
-
 #include<iostream>
 #include<vector>
 #include<map>
@@ -12,33 +11,29 @@
 #include "POINT.h"
 #include "EDGE.h"
 
-using::std::cin;
-using::std::cout;
-using::std::vector;
 
-
-void generate(int n, std::unordered_map<int, point> &hash_points)
+void point_generation(int n, std::unordered_map<int, point> &hash_points)
 {
     const double PI = 3.1415926535;
     std::uniform_real_distribution<double> uniDist(0, 2 * PI);
     std::normal_distribution<double> normDist;
-    vector<double> results;
-    std::default_random_engine generator((unsigned)std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+    std::vector<double> results;
+    std::default_random_engine point_generation((unsigned)std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
     for (int i = 0; i < n; ++i)
     {
-        double r = normDist(generator);
-        double phi = uniDist(generator);
+        double r = normDist(point_generation);
+        double phi = uniDist(point_generation);
         double x = r * (cos(phi));
         double y = r * (sin(phi));
         hash_points.emplace(i, point(x, y));
     }
 }
 
-void Prima(const int &n, std::unordered_map<int, point> &hash_points, vector<vector<int>> &graph_mst)
+void find_mst(const int &n, std::unordered_map<int, point> &hash_points, std::vector<std::vector<int>> &graph_mst)
 {
-    vector<int> prev(n, 0);
-    vector<int> visited(n, 0);
-    vector<int> mst;
+    std::vector<int> prev(n, 0);
+    std::vector<int> visited(n, 0);
+    std::vector<int> mst;
     double length = 0;
     std::multimap<double, std::pair<int, int>> Q;
     Q.emplace(0, std::make_pair( 0, -1 ));
@@ -71,58 +66,50 @@ void Prima(const int &n, std::unordered_map<int, point> &hash_points, vector<vec
     }
 }
 
-
-void dfs(int&step, int vertex, int& k, const int& n, double&value, vector<int> &visited, vector<vector<int>> &graph_mst, std::unordered_map<int, point> &hash_points)
-{
-    visited[vertex] = step;
-    step += 1;
-    value += distance(hash_points[vertex], hash_points[k]);
-    k = vertex;
-
-    for (int i = 0; i < graph_mst[vertex].size(); ++i)
-        if (visited[graph_mst[vertex][i]] == 0)
-            dfs(step, graph_mst[vertex][i], k, n, value, visited, graph_mst, hash_points);
+void dfs(int vertex, std::vector<int> &visited, std::vector<std::vector<int>> &graph_mst, std::vector<int>& dfs_in_order){
+    visited[vertex] = true;
+    dfs_in_order.push_back(vertex);
+    for (int next_vertex: graph_mst[vertex]){
+        if (!visited[next_vertex]){
+            dfs(next_vertex, visited, graph_mst, dfs_in_order);
+        }
+    }
 }
 
-double triangle_MST(const int& n, vector<vector<int>> &graph_mst, std::unordered_map<int, point> &hash_points)
+double variant_A_answer(const int& n, std::vector<std::vector<int>> &graph_mst, std::unordered_map<int, point> &hash_points)
 {
     double value = 0;
-    vector<int> visited(n, 0);
-    int k = 0;
-    int step = 1;
-    dfs(step, 0, k, n, value, visited, graph_mst, hash_points);
-    for (int i = 0; i < n; ++i)
-    {
-        if (visited[i] == step - 1)
-        {
-            value += distance(hash_points[0], hash_points[i]);
-            break;
-        }
+    std::vector<int> visited(n, false);
+    std::vector<int> dfs_in_order;
+    dfs(0, visited, graph_mst, dfs_in_order);
+    dfs_in_order.push_back(0);
+    for (int i = 0; i < n; ++i){
+        value += distance(hash_points[dfs_in_order[i]], hash_points[dfs_in_order[i + 1]]);
     }
     return value;
 }
 
-double tree_path(vector<int> &list, std::unordered_map<int, point> &hash_points)
+double salesman_path(std::vector<int> &path, std::unordered_map<int, point> &hash_points)
 {
     double value = 0;
-    for (int i = 0; i < list.size(); ++i)
-        value += distance(hash_points[list[i]], hash_points[list[(i + 1) % list.size()]]);
+    for (int i = 0; i < path.size(); ++i)
+        value += distance(hash_points[path[i]], hash_points[path[(i + 1) % path.size()]]);
     return value;
 }
 
 double really_answer(const int& n, std::unordered_map<int, point>& hash_points)
 {
-    vector<int> list(n);
+    std::vector<int> path(n);
     for (int i = 0; i < n; ++i)
-        list[i] = i;
+        path[i] = i;
     double ans = 1000000000.0;
     do {
-        ans = std::min(ans, tree_path(list, hash_points));
-    } while (std::next_permutation(list.begin(), list.end()));
+        ans = std::min(ans, salesman_path(path, hash_points));
+    } while (std::next_permutation(path.begin(), path.end()));
     return ans;
 }
 
-double avg_square_deviation_quality(vector<double> &v_real, vector<double> &v_our, const int& num_steps)
+double standard_deviation(std::vector<double> &v_real, std::vector<double> &v_our, const int& num_steps)
 {
     double sum_value = 0;
     for (int i = 0; i < num_steps; ++i)
@@ -134,20 +121,19 @@ double avg_square_deviation_quality(vector<double> &v_real, vector<double> &v_ou
     return sqrt(avg_square / num_steps);
 }
 
-void fill_value_of_path(const int&n, const int& num_steps, vector<vector<double>> &real_ans, vector<vector<double>> &triangle_ans)
+void colculate_the_result(const int&n, const int& num_steps, std::vector<std::vector<double>> &real_ans, std::vector<std::vector<double>> &variant_A_ans)
 {
     for (int i = 2; i < n; ++i){
         for (int j = 0; j < num_steps; ++j){
             std::unordered_map<int, point> hash_points;
-            vector<vector<int>> graph_mst(i);
-            generate(i, hash_points);
+            std::vector<std::vector<int>> graph_mst(i);
+            point_generation(i, hash_points);
             double r_a = really_answer(i, hash_points);
 
-            Prima(i, hash_points, graph_mst);
-            double t_a = triangle_MST(i, graph_mst, hash_points);
+            find_mst(i, hash_points, graph_mst);
+            double t_a = variant_A_answer(i, graph_mst, hash_points);
             real_ans[i].push_back(r_a);
-            triangle_ans[i].push_back(t_a);
-            cout << ".";
+            variant_A_ans[i].push_back(t_a);
         }
     }
 }
@@ -157,13 +143,13 @@ int main()
     const int num_steps = 30;
     const int n = 10;
 
-    vector<vector<double>> real_ans(n);
-    vector<vector<double>> triangle_ans(n);
+    std::vector<std::vector<double>> real_ans(n);
+    std::vector<std::vector<double>> variant_A_ans(n);
 
-    fill_value_of_path(n, num_steps, real_ans, triangle_ans);
+    colculate_the_result(n, num_steps, real_ans, variant_A_ans);
 
     for (int i = 2; i < n; ++i){
-        cout << "for maching " << i << " : " << avg_square_deviation_quality(real_ans[i], triangle_ans[i], num_steps) << '\n';
+        std::cout  << i << " : " << standard_deviation(real_ans[i], variant_A_ans[i], num_steps) << '\n';
     }
 
 }
